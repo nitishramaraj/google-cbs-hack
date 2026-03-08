@@ -1,85 +1,73 @@
-import { useRef, useEffect, useCallback } from 'react'
-import { drawFaceMesh, drawROI, drawPulse, drawLabel, stressToColor } from '../utils/overlayRenderer'
+import { useRef, useEffect } from 'react'
 
 export default function AROverlay({ landmarks, vitals, stressLevel, pulsePeak, roiPolygons, signalQuality }) {
   const canvasRef = useRef(null)
-  const pulseRef = useRef(0)
-  const animRef = useRef(null)
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const parent = canvas.parentElement
-    if (!parent) return
-    canvas.width = parent.clientWidth
-    canvas.height = parent.clientHeight
-    const ctx = canvas.getContext('2d')
-    const w = canvas.width
-    const h = canvas.height
-    ctx.clearRect(0, 0, w, h)
-
-    const color = stressToColor(stressLevel || 'low')
-
-    // Draw face mesh
-    if (landmarks && landmarks.length > 0) {
-      drawFaceMesh(ctx, landmarks, w, h, color, 0.25)
-    }
-
-    // Draw ROI regions
-    if (roiPolygons) {
-      if (roiPolygons.forehead) drawROI(ctx, landmarks, roiPolygons.forehead, w, h, color)
-      if (roiPolygons.left_cheek) drawROI(ctx, landmarks, roiPolygons.left_cheek, w, h, color)
-      if (roiPolygons.right_cheek) drawROI(ctx, landmarks, roiPolygons.right_cheek, w, h, color)
-    }
-
-    // Pulse animation
-    if (pulsePeak) {
-      pulseRef.current = 1
-    }
-    if (pulseRef.current > 0) {
-      const cx = w * 0.5
-      const cy = h * 0.3
-      drawPulse(ctx, cx, cy, 20, 1 - pulseRef.current)
-      pulseRef.current = Math.max(0, pulseRef.current - 0.03)
-    }
-
-    // Vital labels
-    if (vitals) {
-      if (vitals.heart_rate) {
-        drawLabel(ctx, `${vitals.heart_rate} BPM`, 20, 40, '#ff4466', 16)
-      }
-      if (vitals.stress_composite != null) {
-        drawLabel(ctx, `Stress: ${vitals.stress_composite}`, w - 140, 40, color, 14)
-      }
-      if (vitals.respiratory_rate) {
-        drawLabel(ctx, `RR: ${vitals.respiratory_rate}`, 20, 65, '#88aacc', 12)
-      }
-    }
-
-    // Signal quality dot
-    if (signalQuality) {
-      const dotColor = signalQuality === 'good' ? '#00ff88' : signalQuality === 'fair' ? '#ffdd00' : '#ff3344'
-      ctx.beginPath()
-      ctx.arc(w - 20, 20, 5, 0, Math.PI * 2)
-      ctx.fillStyle = dotColor
-      ctx.fill()
-    }
-
-    animRef.current = requestAnimationFrame(draw)
-  }, [landmarks, vitals, stressLevel, pulsePeak, roiPolygons, signalQuality])
 
   useEffect(() => {
-    animRef.current = requestAnimationFrame(draw)
-    return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current)
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const w = canvas.width = canvas.parentElement?.clientWidth || 640
+    const h = canvas.height = canvas.parentElement?.clientHeight || 480
+
+    ctx.clearRect(0, 0, w, h)
+
+    if (!landmarks || landmarks.length === 0) return
+
+    // Subtle face outline — just key contour points
+    const contour = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
+                     397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
+                     172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109]
+
+    ctx.beginPath()
+    ctx.strokeStyle = 'rgba(124, 92, 224, 0.25)'
+    ctx.lineWidth = 1.5
+    contour.forEach((idx, i) => {
+      if (idx >= landmarks.length) return
+      const x = landmarks[idx][0] * w
+      const y = landmarks[idx][1] * h
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    })
+    ctx.closePath()
+    ctx.stroke()
+
+    // ROI highlights — soft colored regions
+    if (roiPolygons) {
+      const regions = [
+        { key: 'forehead', color: 'rgba(124, 92, 224, 0.08)' },
+        { key: 'left_cheek', color: 'rgba(77, 171, 247, 0.08)' },
+        { key: 'right_cheek', color: 'rgba(77, 171, 247, 0.08)' },
+      ]
+      regions.forEach(({ key, color }) => {
+        const pts = roiPolygons[key]
+        if (!pts || pts.length === 0) return
+        ctx.beginPath()
+        ctx.fillStyle = color
+        pts.forEach((p, i) => {
+          const x = p[0] * w / 640
+          const y = p[1] * h / 480
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        })
+        ctx.closePath()
+        ctx.fill()
+      })
     }
-  }, [draw])
+
+    // Pulse flash
+    if (pulsePeak) {
+      ctx.fillStyle = 'rgba(255, 107, 107, 0.08)'
+      ctx.fillRect(0, 0, w, h)
+    }
+
+  }, [landmarks, vitals, stressLevel, pulsePeak, roiPolygons, signalQuality])
 
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 10 }}
+      className="absolute inset-0 w-full h-full"
+      style={{ zIndex: 10, pointerEvents: 'none' }}
     />
   )
 }

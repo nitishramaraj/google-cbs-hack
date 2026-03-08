@@ -1,67 +1,106 @@
-export default function LandingPage({ onStart, connected, error }) {
-  const features = [
-    { icon: '\u2764', title: 'Heart Rate Detection', desc: 'Real-time pulse monitoring through advanced computer vision' },
-    { icon: '\u26A1', title: 'Stress Analysis', desc: 'Composite stress scoring from multiple physiological signals' },
-    { icon: '\uD83C\uDFA4', title: 'Voice AI Coach', desc: 'Empathetic AI companion that adapts to your emotional state' },
-    { icon: '\uD83D\uDCC8', title: 'Session Insights', desc: 'Beautiful post-session analysis with key moments highlighted' },
-  ]
+import { motion } from 'framer-motion'
+import { Heart, Waves, Brain, Shield } from 'lucide-react'
 
+const features = [
+  { icon: Heart, label: 'Heart Rate', desc: 'Real-time rPPG detection', color: '#ff6b6b' },
+  { icon: Brain, label: 'Stress Analysis', desc: 'AI-powered insights', color: '#7c5ce0' },
+  { icon: Waves, label: 'Breathing', desc: 'Respiratory tracking', color: '#51cf66' },
+  { icon: Shield, label: 'SpO2', desc: 'Oxygen estimation', color: '#4dabf7' },
+]
+
+export default function LandingPage({ onStart, connected, error }) {
   return (
-    <div className="h-screen flex flex-col items-center justify-center px-8" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d1117 50%, #0a0a0f 100%)' }}>
-      <div className="animate-fade-in text-center max-w-3xl">
-        <h1 className="text-6xl font-bold mb-3" style={{
-          background: 'linear-gradient(135deg, #00d4ff, #00ffaa, #00d4ff)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        }}>
+    <div className="h-screen w-screen flex items-center justify-center relative overflow-hidden"
+         style={{ background: 'linear-gradient(135deg, #f8f9fc 0%, #ede8fb 50%, #edf5ff 100%)' }}>
+
+      {/* Decorative blurred circles */}
+      <div className="absolute w-96 h-96 rounded-full opacity-30 blur-3xl"
+           style={{ background: '#7c5ce0', top: '-10%', right: '-5%' }} />
+      <div className="absolute w-80 h-80 rounded-full opacity-20 blur-3xl"
+           style={{ background: '#4dabf7', bottom: '-10%', left: '-5%' }} />
+      <div className="absolute w-64 h-64 rounded-full opacity-20 blur-3xl"
+           style={{ background: '#ff6b6b', top: '40%', left: '20%' }} />
+
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="text-center z-10 max-w-xl px-6"
+      >
+        {/* Logo */}
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+          className="w-20 h-20 mx-auto mb-6 rounded-3xl flex items-center justify-center shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #7c5ce0, #4dabf7)' }}
+        >
+          <Heart className="w-10 h-10 text-white" strokeWidth={1.5} />
+        </motion.div>
+
+        <h1 className="text-5xl font-bold mb-3"
+            style={{ background: 'linear-gradient(135deg, #1a1d2e, #7c5ce0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           VitalSense
         </h1>
-        <p className="text-xl mb-12" style={{ color: '#8888aa' }}>
-          AI-Powered Real-Time Wellness Monitoring
+        <p className="text-lg mb-10" style={{ color: '#6b7190' }}>
+          Your AI wellness companion. Real-time vitals, real conversations.
         </p>
 
-        <div className="grid grid-cols-2 gap-4 mb-12">
+        {/* Feature pills */}
+        <div className="flex flex-wrap justify-center gap-3 mb-10">
           {features.map((f, i) => (
-            <div key={i} className="p-5 rounded-xl text-left" style={{
-              background: '#12121a', border: '1px solid #1e1e2e',
-              animationDelay: `${i * 0.1}s`,
-            }}>
-              <div className="text-2xl mb-2">{f.icon}</div>
-              <h3 className="text-sm font-semibold mb-1" style={{ color: '#00d4ff' }}>{f.title}</h3>
-              <p className="text-xs" style={{ color: '#8888aa' }}>{f.desc}</p>
-            </div>
+            <motion.div
+              key={f.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 + i * 0.1 }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl"
+              style={{ background: 'white', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
+            >
+              <f.icon className="w-4 h-4" style={{ color: f.color }} strokeWidth={2} />
+              <span className="text-sm font-medium" style={{ color: '#1a1d2e' }}>{f.label}</span>
+            </motion.div>
           ))}
         </div>
 
-        {/* Connection status */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <span className="w-2.5 h-2.5 rounded-full" style={{ background: connected ? '#00ff88' : '#ff4466' }} />
-          <span className="text-sm" style={{ color: connected ? '#00ff88' : '#ff4466' }}>
-            {connected ? 'Backend connected' : 'Waiting for backend...'}
-          </span>
-        </div>
-
-        {error && (
-          <p className="text-sm mb-4" style={{ color: '#ff4466' }}>{error}</p>
-        )}
-
-        <button
+        {/* Start button */}
+        <motion.button
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.8 }}
+          whileHover={{ scale: 1.03, boxShadow: '0 8px 30px rgba(124, 92, 224, 0.3)' }}
+          whileTap={{ scale: 0.97 }}
           onClick={onStart}
           disabled={!connected}
-          className="px-10 py-4 rounded-full text-lg font-semibold cursor-pointer border-none transition-all duration-300 hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-10 py-4 rounded-2xl text-white font-semibold text-lg border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
-            background: connected ? 'linear-gradient(135deg, #00d4ff, #00a8cc)' : '#333',
-            color: connected ? '#0a0a0f' : '#888',
+            background: connected ? 'linear-gradient(135deg, #7c5ce0, #4dabf7)' : '#ccc',
+            boxShadow: connected ? '0 4px 20px rgba(124, 92, 224, 0.25)' : 'none',
           }}
         >
-          Begin Session
-        </button>
+          {connected ? 'Begin Session' : 'Connecting...'}
+        </motion.button>
 
-        {!connected && (
-          <p className="text-xs mt-4" style={{ color: '#555' }}>
-            Start the backend with: python3 main.py
+        {/* Connection status */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="flex items-center justify-center gap-2 mt-5"
+        >
+          <span className="w-2 h-2 rounded-full"
+                style={{ background: connected ? '#51cf66' : '#ffa94d', boxShadow: connected ? '0 0 8px #51cf66' : 'none' }} />
+          <span className="text-xs" style={{ color: '#9ca3bc' }}>
+            {connected ? 'Backend connected' : 'Waiting for backend...'}
+          </span>
+        </motion.div>
+
+        {error && (
+          <p className="mt-3 text-sm px-4 py-2 rounded-xl" style={{ background: '#fff0f0', color: '#ff6b6b' }}>
+            {error}
           </p>
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }

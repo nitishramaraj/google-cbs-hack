@@ -1,19 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --accent: #00d4ff;
-  --accent-dim: #00a8cc;
-  --card-bg: #12121a;
-  --card-border: #1e1e2e;
-  --bg-primary: #0a0a0f;
-  --text-primary: #f0f0f5;
-  --text-secondary: #8888aa;
+  --bg: #f8f9fc;
+  --bg-card: #ffffff;
+  --bg-hover: #f0f2f8;
+  --border: #e8eaf0;
+  --border-light: #f0f1f5;
+  --text-primary: #1a1d2e;
+  --text-secondary: #6b7190;
+  --text-muted: #9ca3bc;
+  --accent: #7c5ce0;
+  --accent-light: #ede8fb;
+  --accent-glow: rgba(124, 92, 224, 0.15);
+  --coral: #ff6b6b;
+  --coral-light: #fff0f0;
+  --ocean: #4dabf7;
+  --ocean-light: #edf5ff;
+  --mint: #51cf66;
+  --mint-light: #ecfbef;
+  --amber: #ffa94d;
+  --amber-light: #fff8ed;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--bg-primary);
+  background: var(--bg);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -23,20 +35,35 @@ body {
 
 #root { height: 100vh; }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.6); }
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(1.5); opacity: 0; }
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-.animate-fade-in { animation: fade-in 0.6s ease-out forwards; }
-.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.3); opacity: 0.2; }
+}
+
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+}
