@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init && git add project.md && git commit -m \"Initial commit: project plan\")"
+    ]
+  }
+}
