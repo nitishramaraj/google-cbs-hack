@@ -206,9 +206,20 @@ async def start_session(sid, data=None):
     await sio.emit("phase_change", {"phase": "calibrating"}, room=sid)
     logger.info("Phase: calibrating")
 
-    # Start Gemini
+    # Start Gemini and wire audio/text callbacks to Socket.IO
     if gemini_session:
         try:
+            # Forward Gemini audio to frontend
+            async def _on_gemini_audio(data: bytes):
+                await sio.emit("audio_output", data, room=sid)
+
+            # Forward Gemini text to frontend
+            async def _on_gemini_text(text: str):
+                await sio.emit("gemini_text", {"text": text, "timestamp": time.time()}, room=sid)
+
+            gemini_session.register_audio_callback(_on_gemini_audio)
+            gemini_session.register_text_callback(_on_gemini_text)
+
             await gemini_session.start_session()
         except Exception as e:
             logger.error(f"Gemini start failed: {e}")
@@ -219,6 +230,7 @@ async def start_session(sid, data=None):
         asyncio.create_task(_vitals_emitter(sid)),
         asyncio.create_task(_calibration_timer(sid)),
         asyncio.create_task(_gemini_event_emitter(sid)),
+        asyncio.create_task(_gemini_vision_loop(sid)),
         asyncio.create_task(_session_timeout(sid)),
     ]
     session_state["tasks"] = tasks
@@ -270,15 +282,21 @@ async def _vitals_emitter(sid: str) -> None:
                     if session_store:
                         session_store.add_reading(vitals)
 
-                    # Inject vitals context into Gemini
-                    if gemini_session and hasattr(gemini_session, 'inject_context'):
-                        context = (f"HR:{vitals.get('heart_rate')} "
-                                   f"Stress:{vitals.get('stress_composite')} "
-                                   f"Quality:{vitals.get('signal_quality')}")
-                        try:
-                            await gemini_session.inject_context(context)
-                        except Exception:
-                            pass
+                    # Inject vitals context into Gemini — only every 15s with real data
+                    hr = vitals.get('heart_rate')
+                    if (hr is not None and gemini_session
+                            and hasattr(gemini_session, 'inject_context')):
+                        now_t = time.time()
+                        last_inject = session_state.get("last_vitals_inject", 0)
+                        if now_t - last_inject >= 15:
+                            session_state["last_vitals_inject"] = now_t
+                            context = (f"HR:{hr} "
+                                       f"Stress:{vitals.get('stress_composite')} "
+                                       f"Quality:{vitals.get('signal_quality')}")
+                            try:
+                                await gemini_session.inject_context(context)
+                            except Exception:
+                                pass
 
                     # Phase transitions based on stress
                     stress = vitals.get("stress_composite")
@@ -308,6 +326,16 @@ async def _calibration_timer(sid: str) -> None:
             session_state["phase"] = "conversation"
             await sio.emit("phase_change", {"phase": "conversation"}, room=sid)
             logger.info("Phase: conversation (calibration complete)")
+
+            # Notify Gemini that calibration is done
+            if gemini_session and gemini_session.is_active():
+                try:
+                    await gemini_session.inject_context(
+                        "[CALIBRATION COMPLETE] Baseline vitals established. "
+                        "You can now reference the user's vitals naturally in conversation."
+                    )
+                except Exception as e:
+                    logger.error(f"Gemini calibration notify failed: {e}")
     except asyncio.CancelledError:
         pass
 
@@ -324,6 +352,29 @@ async def _gemini_event_emitter(sid: str) -> None:
                         await sio.emit("conversation_event", event, room=sid)
                     last_count = len(events)
             await asyncio.sleep(1)
+    except asyncio.CancelledError:
+        pass
+
+
+async def _gemini_vision_loop(sid: str) -> None:
+    """Send camera frames to Gemini for vision at ~0.5fps, starting after 5s."""
+    try:
+        # Wait a few seconds so Gemini can greet first without being overwhelmed
+        await asyncio.sleep(5)
+        while session_state["phase"] not in ("completed", "waiting"):
+            if capture_engine and gemini_session and gemini_session.is_active():
+                try:
+                    frame, _ = capture_engine.get_frame()
+                    if frame is not None:
+                        import cv2
+                        h, w = frame.shape[:2]
+                        scale = 512.0 / w
+                        small = cv2.resize(frame, (512, int(h * scale)))
+                        _, jpeg = cv2.imencode('.jpg', small, [cv2.IMWRITE_JPEG_QUALITY, 50])
+                        await gemini_session.send_video_frame(jpeg.tobytes())
+                except Exception as e:
+                    logger.debug(f"Vision send error: {e}")
+            await asyncio.sleep(2.0)  # 0.5 fps — enough for Gemini to see, not overwhelm
     except asyncio.CancelledError:
         pass
 
